@@ -7,10 +7,13 @@ use Base3\Api\IDisplay;
 use Base3\Api\IMvcView;
 use Base3\Api\IRequest;
 use Base3\Api\ISystemService;
+use Base3\Language\Api\ILanguage;
 use Base3\LinkTarget\Api\ILinkTargetService;
 use MessageHubDemo\Message\DemoWelcomeMessageTypeProvider;
 use MessagingFoundation\Api\IMessageRenderer;
 use MessagingFoundation\Api\IMessageService;
+use MessagingFoundation\Api\IMessageTransport;
+use MessagingFoundation\Api\IMessageTransportRegistry;
 use MessagingFoundation\Api\IMessageTypeSynchronizationService;
 use MessagingFoundation\Dto\MessageAddress;
 use Throwable;
@@ -23,6 +26,8 @@ final class MessageHubDemoAdminDisplay implements IDisplay {
 		private readonly IAssetResolver $assetResolver,
 		private readonly ILinkTargetService $linkTargetService,
 		private readonly ISystemService $systemService,
+		private readonly ILanguage $language,
+		private readonly IMessageTransportRegistry $transportRegistry,
 		private readonly IMessageTypeSynchronizationService $messageTypeSynchronizationService,
 		private readonly IMessageRenderer $messageRenderer,
 		private readonly IMessageService $messageService
@@ -51,6 +56,9 @@ final class MessageHubDemoAdminDisplay implements IDisplay {
 	}
 
 	private function handleHtml(): string {
+		$languageOptions = $this->getLanguageOptions();
+		$transportOptions = $this->getEnabledTransportOptions();
+
 		$this->view->setPath(DIR_PLUGIN . 'MessageHubDemo');
 		$this->view->setTemplate('Display/MessageHubDemoAdminDisplay.php');
 		$this->view->assign(
@@ -66,6 +74,10 @@ final class MessageHubDemoAdminDisplay implements IDisplay {
 		$this->view->assign('typeName', DemoWelcomeMessageTypeProvider::getName());
 		$this->view->assign('systemName', $this->getSystemName());
 		$this->view->assign('demoCode', 'MH-' . date('Ymd-His'));
+		$this->view->assign('languageOptions', $languageOptions);
+		$this->view->assign('selectedLanguage', $this->getSelectedLanguage($languageOptions));
+		$this->view->assign('transportOptions', $transportOptions);
+		$this->view->assign('selectedTransport', $this->getSelectedTransport($transportOptions));
 
 		return $this->view->loadTemplate();
 	}
@@ -102,7 +114,9 @@ final class MessageHubDemoAdminDisplay implements IDisplay {
 		}
 
 		$mode = (string) ($payload['mode'] ?? 'sync');
-		$language = $this->readString($payload, 'language', 'de');
+		$language = $this->normalizeLanguage(
+			$this->readString($payload, 'language', $this->language->getLanguage())
+		);
 
 		if($mode === 'sync') {
 			return $this->messageTypeSynchronizationService->syncOne(DemoWelcomeMessageTypeProvider::getName(), $language);
@@ -123,15 +137,22 @@ final class MessageHubDemoAdminDisplay implements IDisplay {
 	 * @return array<string, mixed>
 	 */
 	private function sendDemoMessage(array $payload, bool $sendNow): array {
-		$language = $this->readString($payload, 'language', 'de');
-		$transportName = $this->readString($payload, 'transport_name', 'phpmailer');
+		$language = $this->normalizeLanguage(
+			$this->readString($payload, 'language', $this->language->getLanguage())
+		);
+		$transportOptions = $this->getEnabledTransportOptions();
+		$transportName = $this->readString(
+			$payload,
+			'transport_name',
+			$this->getSelectedTransport($transportOptions)
+		);
 		$recipientAddress = $this->readString($payload, 'recipient_address');
 		$recipientName = $this->readString($payload, 'recipient_name', 'MessageHub Demo');
 
-		if(!filter_var($recipientAddress, FILTER_VALIDATE_EMAIL)) {
+		if(!$this->hasTransportOption($transportOptions, $transportName)) {
 			return [
 				'ok' => false,
-				'error' => 'Please provide a valid recipient email address.'
+				'error' => 'Please select an enabled message transport.'
 			];
 		}
 
@@ -147,13 +168,16 @@ final class MessageHubDemoAdminDisplay implements IDisplay {
 
 		$message = $this->messageRenderer
 			->render(DemoWelcomeMessageTypeProvider::getName(), $language, $context, $transportName)
-			->withRecipients([
-				new MessageAddress('to', $recipientAddress, $recipientName)
-			])
 			->withMetadata([
 				'demo' => true,
 				'demo_display' => self::getName()
 			]);
+
+		if($recipientAddress !== '') {
+			$message = $message->withRecipients([
+				new MessageAddress('to', $recipientAddress, $recipientName)
+			]);
+		}
 
 		$queueId = $sendNow
 			? $this->messageService->sendNow($message, $transportName)
@@ -167,6 +191,148 @@ final class MessageHubDemoAdminDisplay implements IDisplay {
 			'transport_name' => $transportName,
 			'language' => $language
 		];
+	}
+
+	/**
+	 * @return array<int,array{value:string,label:string}>
+	 */
+	private function getLanguageOptions(): array {
+		$options = [];
+		$currentLanguage = trim($this->language->getLanguage());
+
+		foreach($this->language->getLanguages() as $language) {
+			$language = trim((string) $language);
+			if($language === '' || isset($options[$language])) {
+				continue;
+			}
+
+			$options[$language] = [
+				'value' => $language,
+				'label' => $language
+			];
+		}
+
+		if($currentLanguage !== '' && !isset($options[$currentLanguage])) {
+			$options = [
+				$currentLanguage => [
+					'value' => $currentLanguage,
+					'label' => $currentLanguage
+				]
+			] + $options;
+		}
+
+		return array_values($options);
+	}
+
+	/**
+	 * @param array<int,array{value:string,label:string}> $options
+	 */
+	private function getSelectedLanguage(array $options): string {
+		$currentLanguage = trim($this->language->getLanguage());
+
+		if($this->hasOption($options, $currentLanguage)) {
+			return $currentLanguage;
+		}
+
+		return isset($options[0]['value']) ? (string) $options[0]['value'] : 'en';
+	}
+
+	private function normalizeLanguage(string $language): string {
+		$options = $this->getLanguageOptions();
+
+		if($this->hasOption($options, $language)) {
+			return $language;
+		}
+
+		return $this->getSelectedLanguage($options);
+	}
+
+	/**
+	 * @return array<int,array{value:string,label:string}>
+	 */
+	private function getEnabledTransportOptions(): array {
+		$options = [];
+
+		foreach($this->transportRegistry->getTransports() as $name => $transport) {
+			$settings = $this->transportRegistry->getTransportSettings($name);
+			if(!$this->isTransportEnabled($transport, $settings)) {
+				continue;
+			}
+
+			$options[] = [
+				'value' => $name,
+				'label' => $transport->getLabel() . ' (' . $name . ')'
+			];
+		}
+
+		return $options;
+	}
+
+	/**
+	 * @param array<int,array{value:string,label:string}> $options
+	 */
+	private function getSelectedTransport(array $options): string {
+		$defaultTransport = $this->transportRegistry->getDefaultTransportName();
+
+		if($this->hasTransportOption($options, $defaultTransport)) {
+			return $defaultTransport;
+		}
+
+		return isset($options[0]['value']) ? (string) $options[0]['value'] : '';
+	}
+
+	private function isTransportEnabled(IMessageTransport $transport, array $settings): bool {
+		if(array_key_exists('enabled', $settings)) {
+			return $this->readBool($settings['enabled'], false);
+		}
+
+		$schema = $transport->getSchema();
+		$properties = isset($schema['properties']) && is_array($schema['properties']) ? $schema['properties'] : [];
+		$enabled = isset($properties['enabled']) && is_array($properties['enabled']) ? $properties['enabled'] : [];
+
+		if(array_key_exists('default', $enabled)) {
+			return $this->readBool($enabled['default'], false);
+		}
+
+		return $properties === [];
+	}
+
+	/**
+	 * @param array<int,array{value:string,label:string}> $options
+	 */
+	private function hasOption(array $options, string $value): bool {
+		foreach($options as $option) {
+			if((string) ($option['value'] ?? '') === $value) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * @param array<int,array{value:string,label:string}> $options
+	 */
+	private function hasTransportOption(array $options, string $value): bool {
+		return $value !== '' && $this->hasOption($options, $value);
+	}
+
+	private function readBool(mixed $value, bool $default): bool {
+		if(is_bool($value)) {
+			return $value;
+		}
+
+		if(is_scalar($value)) {
+			$normalized = strtolower(trim((string) $value));
+			if(in_array($normalized, ['1', 'true', 'yes', 'on', 'enabled'], true)) {
+				return true;
+			}
+			if(in_array($normalized, ['0', 'false', 'no', 'off', 'disabled', ''], true)) {
+				return false;
+			}
+		}
+
+		return $default;
 	}
 
 	/**

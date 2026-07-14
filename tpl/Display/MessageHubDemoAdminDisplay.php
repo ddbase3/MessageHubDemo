@@ -3,6 +3,10 @@ $serviceUrl = (string) $this->_['service'];
 $typeName = (string) $this->_['typeName'];
 $systemName = (string) $this->_['systemName'];
 $demoCode = (string) $this->_['demoCode'];
+$languageOptions = is_array($this->_['languageOptions'] ?? null) ? $this->_['languageOptions'] : [];
+$selectedLanguage = (string) ($this->_['selectedLanguage'] ?? '');
+$transportOptions = is_array($this->_['transportOptions'] ?? null) ? $this->_['transportOptions'] : [];
+$selectedTransport = (string) ($this->_['selectedTransport'] ?? '');
 ?>
 <style>
 	.messagehub-demo-shell {
@@ -56,6 +60,14 @@ $demoCode = (string) $this->_['demoCode'];
 		font-size: 13px;
 	}
 
+	.messagehub-demo-hint {
+		grid-column: 2;
+		margin-top: -6px;
+		color: #777;
+		font-size: 12px;
+		line-height: 1.35;
+	}
+
 	.messagehub-demo-actions {
 		display: flex;
 		gap: 8px;
@@ -77,6 +89,11 @@ $demoCode = (string) $this->_['demoCode'];
 		min-height: 28px;
 		padding: 4px 10px;
 		white-space: nowrap;
+	}
+
+	.messagehub-demo-button:disabled {
+		cursor: not-allowed;
+		opacity: 0.55;
 	}
 
 	.messagehub-demo-button-primary {
@@ -101,13 +118,14 @@ $demoCode = (string) $this->_['demoCode'];
 </style>
 <div class="messagehub-demo-shell">
 	<h1>MessageHub Demo</h1>
-	<p>This display is a small consumer plugin for MessageHub. It provides one message type, synchronizes it into MessageHub templates and sends a test message through the configured transport.</p>
+	<p>This display is a small consumer plugin for MessageHub. It provides one message type, synchronizes it into MessageHub templates and sends a test message through an enabled transport.</p>
 	<p>Message type: <span class="messagehub-demo-type"><?php echo htmlspecialchars($typeName, ENT_QUOTES); ?></span></p>
 
 	<div class="messagehub-demo-panel">
 		<div class="messagehub-demo-form">
-			<label for="messagehub-demo-recipient-address">Recipient email</label>
-			<input id="messagehub-demo-recipient-address" type="email" value="" placeholder="name@example.org" autocomplete="email" />
+			<label for="messagehub-demo-recipient-address">Recipient address</label>
+			<input id="messagehub-demo-recipient-address" type="text" value="" placeholder="Email, phone number, chat ID or topic" autocomplete="off" />
+			<div class="messagehub-demo-hint">Some webhook, log and null transports do not require a recipient address.</div>
 
 			<label for="messagehub-demo-recipient-name">Recipient name</label>
 			<input id="messagehub-demo-recipient-name" type="text" value="MessageHub Demo" />
@@ -122,10 +140,24 @@ $demoCode = (string) $this->_['demoCode'];
 			<input id="messagehub-demo-system-name" type="text" value="<?php echo htmlspecialchars($systemName, ENT_QUOTES); ?>" />
 
 			<label for="messagehub-demo-language">Language</label>
-			<input id="messagehub-demo-language" type="text" value="de" maxlength="12" />
+			<select id="messagehub-demo-language">
+				<?php foreach($languageOptions as $option): ?>
+					<?php $value = (string) ($option['value'] ?? ''); ?>
+					<option value="<?php echo htmlspecialchars($value, ENT_QUOTES); ?>"<?php echo $value === $selectedLanguage ? ' selected' : ''; ?>><?php echo htmlspecialchars((string) ($option['label'] ?? $value), ENT_QUOTES); ?></option>
+				<?php endforeach; ?>
+			</select>
 
 			<label for="messagehub-demo-transport">Transport</label>
-			<input id="messagehub-demo-transport" type="text" value="phpmailer" />
+			<select id="messagehub-demo-transport">
+				<?php if($transportOptions === []): ?>
+					<option value="">No enabled transports</option>
+				<?php else: ?>
+					<?php foreach($transportOptions as $option): ?>
+						<?php $value = (string) ($option['value'] ?? ''); ?>
+						<option value="<?php echo htmlspecialchars($value, ENT_QUOTES); ?>"<?php echo $value === $selectedTransport ? ' selected' : ''; ?>><?php echo htmlspecialchars((string) ($option['label'] ?? $value), ENT_QUOTES); ?></option>
+					<?php endforeach; ?>
+				<?php endif; ?>
+			</select>
 		</div>
 
 		<div class="messagehub-demo-actions">
@@ -141,9 +173,18 @@ $demoCode = (string) $this->_['demoCode'];
 (() => {
 	const serviceUrl = <?php echo json_encode($serviceUrl, JSON_UNESCAPED_SLASHES); ?>;
 	const resultElement = document.getElementById('messagehub-demo-result');
+	const transportElement = document.getElementById('messagehub-demo-transport');
+	const queueButton = document.getElementById('messagehub-demo-queue');
+	const sendNowButton = document.getElementById('messagehub-demo-send-now');
 
 	function value(id) {
 		return document.getElementById(id).value || '';
+	}
+
+	function updateTransportActions() {
+		const enabled = !!(transportElement && transportElement.value);
+		queueButton.disabled = !enabled;
+		sendNowButton.disabled = !enabled;
 	}
 
 	function payload(mode) {
@@ -176,7 +217,9 @@ $demoCode = (string) $this->_['demoCode'];
 	}
 
 	document.getElementById('messagehub-demo-sync').addEventListener('click', () => execute('sync'));
-	document.getElementById('messagehub-demo-queue').addEventListener('click', () => execute('queue'));
-	document.getElementById('messagehub-demo-send-now').addEventListener('click', () => execute('send-now'));
+	queueButton.addEventListener('click', () => execute('queue'));
+	sendNowButton.addEventListener('click', () => execute('send-now'));
+	transportElement.addEventListener('change', updateTransportActions);
+	updateTransportActions();
 })();
 </script>
