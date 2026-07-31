@@ -7,6 +7,11 @@ $languageOptions = is_array($this->_['languageOptions'] ?? null) ? $this->_['lan
 $selectedLanguage = (string) ($this->_['selectedLanguage'] ?? '');
 $transportOptions = is_array($this->_['transportOptions'] ?? null) ? $this->_['transportOptions'] : [];
 $selectedTransport = (string) ($this->_['selectedTransport'] ?? '');
+$translations = is_array($this->_['translations'] ?? null) ? $this->_['translations'] : [];
+$e = static fn($value): string => htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+$t = static fn(string $key, string $fallback): string => trim((string)($translations[$key] ?? '')) !== ''
+	? (string)$translations[$key]
+	: $fallback;
 ?>
 <style>
 	.messagehub-demo-shell {
@@ -117,29 +122,29 @@ $selectedTransport = (string) ($this->_['selectedTransport'] ?? '');
 	}
 </style>
 <div class="messagehub-demo-shell">
-	<h1>MessageHub Demo</h1>
-	<p>This display is a small consumer plugin for MessageHub. It provides one message type, synchronizes it into MessageHub templates and sends a test message through an enabled transport.</p>
-	<p>Message type: <span class="messagehub-demo-type"><?php echo htmlspecialchars($typeName, ENT_QUOTES); ?></span></p>
+	<h1><?php echo $e($t('title', 'MessageHub Demo')); ?></h1>
+	<p><?php echo $e($t('lead', 'This display is a small consumer plugin for MessageHub. It provides one message type, synchronizes it into MessageHub templates and sends a test message through an enabled transport.')); ?></p>
+	<p><?php echo $e($t('message_type', 'Message type')); ?>: <span class="messagehub-demo-type"><?php echo htmlspecialchars($typeName, ENT_QUOTES); ?></span></p>
 
 	<div class="messagehub-demo-panel">
 		<div class="messagehub-demo-form">
-			<label for="messagehub-demo-recipient-address">Recipient address</label>
-			<input id="messagehub-demo-recipient-address" type="text" value="" placeholder="Email, phone number, chat ID or topic" autocomplete="off" />
-			<div class="messagehub-demo-hint">Some webhook, log and null transports do not require a recipient address.</div>
+			<label for="messagehub-demo-recipient-address"><?php echo $e($t('recipient_address', 'Recipient address')); ?></label>
+			<input id="messagehub-demo-recipient-address" type="text" value="" placeholder="<?php echo $e($t('recipient_placeholder', 'Email, phone number, chat ID or topic')); ?>" autocomplete="off" />
+			<div class="messagehub-demo-hint"><?php echo $e($t('recipient_hint', 'Some webhook, log and null transports do not require a recipient address.')); ?></div>
 
-			<label for="messagehub-demo-recipient-name">Recipient name</label>
-			<input id="messagehub-demo-recipient-name" type="text" value="MessageHub Demo" />
+			<label for="messagehub-demo-recipient-name"><?php echo $e($t('recipient_name', 'Recipient name')); ?></label>
+			<input id="messagehub-demo-recipient-name" type="text" value="<?php echo $e($t('recipient_name_default', 'MessageHub Demo')); ?>" />
 
-			<label for="messagehub-demo-title">Demo title</label>
-			<input id="messagehub-demo-title" type="text" value="First MessageHub test" />
+			<label for="messagehub-demo-title"><?php echo $e($t('demo_title', 'Demo title')); ?></label>
+			<input id="messagehub-demo-title" type="text" value="<?php echo $e($t('demo_title_default', 'First MessageHub test')); ?>" />
 
-			<label for="messagehub-demo-code">Demo code</label>
+			<label for="messagehub-demo-code"><?php echo $e($t('demo_code', 'Demo code')); ?></label>
 			<input id="messagehub-demo-code" type="text" value="<?php echo htmlspecialchars($demoCode, ENT_QUOTES); ?>" />
 
-			<label for="messagehub-demo-system-name">System name</label>
+			<label for="messagehub-demo-system-name"><?php echo $e($t('system_name', 'System name')); ?></label>
 			<input id="messagehub-demo-system-name" type="text" value="<?php echo htmlspecialchars($systemName, ENT_QUOTES); ?>" />
 
-			<label for="messagehub-demo-language">Language</label>
+			<label for="messagehub-demo-language"><?php echo $e($t('language', 'Language')); ?></label>
 			<select id="messagehub-demo-language">
 				<?php foreach($languageOptions as $option): ?>
 					<?php $value = (string) ($option['value'] ?? ''); ?>
@@ -147,10 +152,10 @@ $selectedTransport = (string) ($this->_['selectedTransport'] ?? '');
 				<?php endforeach; ?>
 			</select>
 
-			<label for="messagehub-demo-transport">Transport</label>
+			<label for="messagehub-demo-transport"><?php echo $e($t('transport', 'Transport')); ?></label>
 			<select id="messagehub-demo-transport">
 				<?php if($transportOptions === []): ?>
-					<option value="">No enabled transports</option>
+					<option value=""><?php echo $e($t('no_enabled_transports', 'No enabled transports')); ?></option>
 				<?php else: ?>
 					<?php foreach($transportOptions as $option): ?>
 						<?php $value = (string) ($option['value'] ?? ''); ?>
@@ -161,13 +166,13 @@ $selectedTransport = (string) ($this->_['selectedTransport'] ?? '');
 		</div>
 
 		<div class="messagehub-demo-actions">
-			<button type="button" class="messagehub-demo-button" id="messagehub-demo-sync">Sync template</button>
-			<button type="button" class="messagehub-demo-button messagehub-demo-button-primary" id="messagehub-demo-queue">Queue message</button>
-			<button type="button" class="messagehub-demo-button" id="messagehub-demo-send-now">Send now</button>
+			<button type="button" class="messagehub-demo-button" id="messagehub-demo-sync"><?php echo $e($t('sync_template', 'Sync template')); ?></button>
+			<button type="button" class="messagehub-demo-button messagehub-demo-button-primary" id="messagehub-demo-queue"><?php echo $e($t('queue_message', 'Queue message')); ?></button>
+			<button type="button" class="messagehub-demo-button" id="messagehub-demo-send-now"><?php echo $e($t('send_now', 'Send now')); ?></button>
 		</div>
 	</div>
 
-	<div class="messagehub-demo-result"><pre id="messagehub-demo-result">Ready.</pre></div>
+	<div class="messagehub-demo-result"><pre id="messagehub-demo-result"><?php echo $e($t('ready', 'Ready.')); ?></pre></div>
 </div>
 <script>
 (() => {

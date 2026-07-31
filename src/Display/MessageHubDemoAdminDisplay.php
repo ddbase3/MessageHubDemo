@@ -60,7 +60,11 @@ final class MessageHubDemoAdminDisplay implements IDisplay {
 		$transportOptions = $this->getEnabledTransportOptions();
 
 		$this->view->setPath(DIR_PLUGIN . 'MessageHubDemo');
+		$this->view->loadBricks('Display');
+		$translations = $this->view->getBricks('messagehub_demo_admin_display');
+		$translations = is_array($translations) ? $translations : [];
 		$this->view->setTemplate('Display/MessageHubDemoAdminDisplay.php');
+		$this->view->assign('translations', $translations);
 		$this->view->assign(
 			'service',
 			$this->linkTargetService->getLink(
