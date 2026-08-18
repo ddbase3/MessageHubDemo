@@ -177,10 +177,13 @@ $t = static fn(string $key, string $fallback): string => trim((string)($translat
 <script>
 (() => {
 	const serviceUrl = <?php echo json_encode($serviceUrl, JSON_UNESCAPED_SLASHES); ?>;
+	const I18N = <?php echo json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 	const resultElement = document.getElementById('messagehub-demo-result');
 	const transportElement = document.getElementById('messagehub-demo-transport');
 	const queueButton = document.getElementById('messagehub-demo-queue');
 	const sendNowButton = document.getElementById('messagehub-demo-send-now');
+
+	function tr(key, fallback, replacements = {}) { let text = String(I18N[key] || fallback || key); Object.entries(replacements).forEach(([name, value]) => { text = text.split('{' + name + '}').join(String(value)); }); return text; }
 
 	function value(id) {
 		return document.getElementById(id).value || '';
@@ -216,7 +219,7 @@ $t = static fn(string $key, string $fallback): string => trim((string)($translat
 	}
 
 	async function execute(mode) {
-		resultElement.textContent = 'Running ' + mode + ' ...';
+		resultElement.textContent = tr('running_mode', 'Running {mode} ...', { mode });
 		const result = await postJson(payload(mode));
 		resultElement.textContent = JSON.stringify(result, null, 2);
 	}

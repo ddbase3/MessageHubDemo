@@ -52,7 +52,7 @@ final class MessageHubDemoAdminDisplay implements IDisplay {
 	}
 
 	public function getHelp(): string {
-		return 'MessageHub demo display.';
+		return $this->translate('help', 'MessageHub demo display.');
 	}
 
 	private function handleHtml(): string {
@@ -92,7 +92,7 @@ final class MessageHubDemoAdminDisplay implements IDisplay {
 		} catch(Throwable $e) {
 			$response = [
 				'ok' => false,
-				'error' => 'MessageHub demo request failed.',
+				'error' => $this->translate('request_failed', 'MessageHub demo request failed.'),
 				'details' => $e->getMessage(),
 			];
 		}
@@ -132,7 +132,7 @@ final class MessageHubDemoAdminDisplay implements IDisplay {
 
 		return [
 			'ok' => false,
-			'error' => 'Unsupported mode: ' . $mode
+			'error' => str_replace('{mode}', $mode, $this->translate('unsupported_mode', 'Unsupported mode: {mode}'))
 		];
 	}
 
@@ -156,7 +156,7 @@ final class MessageHubDemoAdminDisplay implements IDisplay {
 		if(!$this->hasTransportOption($transportOptions, $transportName)) {
 			return [
 				'ok' => false,
-				'error' => 'Please select an enabled message transport.'
+				'error' => $this->translate('select_enabled_transport', 'Please select an enabled message transport.')
 			];
 		}
 
@@ -265,7 +265,7 @@ final class MessageHubDemoAdminDisplay implements IDisplay {
 
 			$options[] = [
 				'value' => $name,
-				'label' => $transport->getLabel() . ' (' . $name . ')'
+				'label' => $this->translate('transport_label_' . $name, $transport->getLabel()) . ' (' . $name . ')'
 			];
 		}
 
@@ -352,6 +352,15 @@ final class MessageHubDemoAdminDisplay implements IDisplay {
 		$value = trim((string) $value);
 
 		return $value !== '' ? $value : $default;
+	}
+
+	private function translate(string $key, string $fallback): string {
+		$this->view->setPath(DIR_PLUGIN . 'MessageHubDemo');
+		$this->view->loadBricks('Display');
+		$translations = $this->view->getBricks('messagehub_demo_admin_display');
+		$value = is_array($translations) ? trim((string)($translations[$key] ?? '')) : '';
+
+		return $value !== '' ? $value : $fallback;
 	}
 
 	private function getSystemName(): string {
