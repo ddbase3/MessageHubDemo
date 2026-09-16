@@ -1276,3 +1276,9 @@ Transport
 ```
 
 This plugin should be used as a reference when building real BASE3 plugins that need notifications, mails, alerts or other message-based communication.
+
+
+## Documentation
+
+- [Frequently Asked Questions](docs/faq.md)
+- [Privacy and data processing](PRIVACY.md)
