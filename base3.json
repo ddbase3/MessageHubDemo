@@ -1,0 +1,21 @@
+{
+	"manifestVersion": 1,
+	"name": "MessageHubDemo",
+	"namespace": "MessageHubDemo",
+	"version": "4.3.0",
+	"description": "Demonstration plugin for consuming MessageHub messaging services in BASE3.",
+	"license": "GPL-3.0-or-later",
+	"maintainers": [
+		{
+			"name": "Daniel Dahme",
+			"url": "https://www.base3.de",
+			"email": "info@base3.de"
+		}
+	],
+	"repository": "https://github.com/ddbase3/MessageHubDemo",
+	"dependencies": {
+		"Base3Framework": ">=4.10.0",
+		"MessagingFoundation": ">=4.2.0",
+		"MessageHub": ">=4.3.0"
+	}
+}
