@@ -59,7 +59,7 @@ final class MessageHubDemoAdminDisplay implements IDisplay {
 		$languageOptions = $this->getLanguageOptions();
 		$transportOptions = $this->getEnabledTransportOptions();
 
-		$this->view->setPath(DIR_PLUGIN . 'MessageHubDemo');
+		$this->view->setPath(dirname(__DIR__, 2));
 		$this->view->loadBricks('Display');
 		$translations = $this->view->getBricks('messagehub_demo_admin_display');
 		$translations = is_array($translations) ? $translations : [];
@@ -355,7 +355,7 @@ final class MessageHubDemoAdminDisplay implements IDisplay {
 	}
 
 	private function translate(string $key, string $fallback): string {
-		$this->view->setPath(DIR_PLUGIN . 'MessageHubDemo');
+		$this->view->setPath(dirname(__DIR__, 2));
 		$this->view->loadBricks('Display');
 		$translations = $this->view->getBricks('messagehub_demo_admin_display');
 		$value = is_array($translations) ? trim((string)($translations[$key] ?? '')) : '';
