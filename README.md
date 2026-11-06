@@ -66,7 +66,7 @@ queue processing
 delivery retries
 delivery logs
 template persistence
-permission handling
+native permission-policy administration
 ILIAS mail integration
 ```
 
@@ -84,7 +84,7 @@ Those concerns belong to `MessageHub`, `MessagingFoundation`, `Base3IliasLab`, o
 BASE3 Framework
 MessagingFoundation
 MessageHub
-Base3IliasLab integration for administration wiring
+UiFoundation settings integration for an administration entry
 ```
 
 Conceptually:
@@ -1282,3 +1282,22 @@ This plugin should be used as a reference when building real BASE3 plugins that 
 
 - [Frequently Asked Questions](docs/faq.md)
 - [Privacy and data processing](PRIVACY.md)
+
+## Administration and request security
+
+`MessagehubdemoSettingsTab` contributes the existing demo display below the
+MessageHub Messaging settings category. As an `AbstractAdministrationSettingsTab`
+feature its default audience is `development`; the host administrator decision
+is required independently. The display enforces both decisions for direct HTML
+and JSON requests, not only the navigation link.
+
+All JSON commands (`sync`, `queue`, `send-now`) require POST and a session-bound
+CSRF token issued by the existing HTML display. A denied or expired request is
+rejected before synchronizing or sending a message. Error responses do not
+return raw internal exception messages. Rendering, queue persistence, delivery
+and authorization remain owned by the existing MessagingFoundation and
+MessageHub contracts. No new transport or administration endpoint is created.
+
+The dashboard is deliberately an interactive, authenticated administration
+tool. Programmatic message delivery should continue to use the published
+MessagingFoundation APIs rather than this example UI endpoint.

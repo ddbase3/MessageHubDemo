@@ -192,3 +192,17 @@ For privacy-safe use:
 - verify the selected transport before sending
 - clean up MessageHub test records according to the environment's retention policy
 - remove or disable the demo from production navigation when it is not required
+
+## Administrator access and session token
+
+The display now checks native administrator authorization and its independent
+BASE3 feature audience for both HTML rendering and JSON actions. Message send,
+queue and template synchronization requests require a POST with a random
+64-character hexadecimal CSRF token stored under `messagehubdemo.admin.csrf`
+in the existing `ISession` backend. The same value is embedded in the rendered
+admin page and sent only with the demo's JSON requests. It expires when the
+host session is removed, subject to the host session retention policy. This
+plugin does not persist the token independently or send it to message
+transports. Feature audiences remain in the host's existing settings backend.
+Invalid requests return no internal exception details. All transport delivery
+and message persistence remain under MessageHub's existing lifecycle.

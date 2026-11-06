@@ -8,6 +8,7 @@ $selectedLanguage = (string) ($this->_['selectedLanguage'] ?? '');
 $transportOptions = is_array($this->_['transportOptions'] ?? null) ? $this->_['transportOptions'] : [];
 $selectedTransport = (string) ($this->_['selectedTransport'] ?? '');
 $translations = is_array($this->_['translations'] ?? null) ? $this->_['translations'] : [];
+$csrfToken = (string) ($this->_['csrfToken'] ?? '');
 $e = static fn($value): string => htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 $t = static fn(string $key, string $fallback): string => trim((string)($translations[$key] ?? '')) !== ''
 	? (string)$translations[$key]
@@ -178,6 +179,7 @@ $t = static fn(string $key, string $fallback): string => trim((string)($translat
 (() => {
 	const serviceUrl = <?php echo json_encode($serviceUrl, JSON_UNESCAPED_SLASHES); ?>;
 	const I18N = <?php echo json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+	const csrfToken = <?php echo json_encode($csrfToken); ?>;
 	const resultElement = document.getElementById('messagehub-demo-result');
 	const transportElement = document.getElementById('messagehub-demo-transport');
 	const queueButton = document.getElementById('messagehub-demo-queue');
@@ -198,6 +200,7 @@ $t = static fn(string $key, string $fallback): string => trim((string)($translat
 	function payload(mode) {
 		return {
 			mode,
+			csrf: csrfToken,
 			recipient_address: value('messagehub-demo-recipient-address'),
 			recipient_name: value('messagehub-demo-recipient-name'),
 			demo_title: value('messagehub-demo-title'),

@@ -3,6 +3,10 @@
 namespace MessageHubDemo\Display;
 
 use Base3\Api\IAssetResolver;
+use Base3\Authorization\Api\IAuthorizationService;
+use Base3\Session\Api\ISession;
+use UiFoundation\Settings\SettingsAdministrationAccess;
+use MessageHubDemo\SettingsTab\MessagehubdemoSettingsTab;
 use Base3\Api\IDisplay;
 use Base3\Api\IMvcView;
 use Base3\Api\IRequest;
@@ -20,6 +24,8 @@ use Throwable;
 
 final class MessageHubDemoAdminDisplay implements IDisplay {
 
+	private const CSRF_KEY = 'messagehubdemo.admin.csrf';
+
 	public function __construct(
 		private readonly IRequest $request,
 		private readonly IMvcView $view,
@@ -30,7 +36,9 @@ final class MessageHubDemoAdminDisplay implements IDisplay {
 		private readonly IMessageTransportRegistry $transportRegistry,
 		private readonly IMessageTypeSynchronizationService $messageTypeSynchronizationService,
 		private readonly IMessageRenderer $messageRenderer,
-		private readonly IMessageService $messageService
+		private readonly IMessageService $messageService,
+		private readonly IAuthorizationService $authorization,
+		private readonly ISession $session
 	) {}
 
 	public static function getName(): string {
@@ -42,6 +50,11 @@ final class MessageHubDemoAdminDisplay implements IDisplay {
 	}
 
 	public function getOutput(string $out = 'html', bool $final = false): string {
+		if (!SettingsAdministrationAccess::isAllowed($this->authorization, MessagehubdemoSettingsTab::getName())) {
+			http_response_code(403);
+			return '';
+		}
+
 		$out = strtolower((string) $out);
 
 		if($out === 'json') {
@@ -82,18 +95,34 @@ final class MessageHubDemoAdminDisplay implements IDisplay {
 		$this->view->assign('selectedLanguage', $this->getSelectedLanguage($languageOptions));
 		$this->view->assign('transportOptions', $transportOptions);
 		$this->view->assign('selectedTransport', $this->getSelectedTransport($transportOptions));
+		$this->view->assign('csrfToken', $this->csrfToken());
 
 		return $this->view->loadTemplate();
 	}
 
 	private function handleJson(bool $final = false): string {
+		if ($final && !headers_sent()) {
+			header('Content-Type: application/json; charset=utf-8');
+		}
+		if (strtoupper((string) $this->request->server('REQUEST_METHOD', '')) !== 'POST') {
+			http_response_code(405);
+			return $this->jsonError('invalid_request_method');
+		}
+		$payload = $this->request->getJsonBody();
+		$sessionToken = $this->session->get(self::CSRF_KEY, '');
+		if (!is_string($sessionToken) || strlen($sessionToken) !== 64
+			|| !is_string($payload['csrf'] ?? null)
+			|| !hash_equals($sessionToken, $payload['csrf'])) {
+			http_response_code(403);
+			return $this->jsonError('invalid_csrf');
+		}
+
 		try {
 			$response = $this->buildJsonResponse();
-		} catch(Throwable $e) {
+		} catch(Throwable) {
 			$response = [
 				'ok' => false,
 				'error' => $this->translate('request_failed', 'MessageHub demo request failed.'),
-				'details' => $e->getMessage(),
 			];
 		}
 
@@ -105,6 +134,22 @@ final class MessageHubDemoAdminDisplay implements IDisplay {
 			$response,
 			JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT
 		);
+	}
+
+	private function csrfToken(): string {
+		$token = $this->session->get(self::CSRF_KEY, '');
+		if (!is_string($token) || strlen($token) !== 64) {
+			$token = bin2hex(random_bytes(32));
+			$this->session->set(self::CSRF_KEY, $token);
+		}
+		return $token;
+	}
+
+	private function jsonError(string $key): string {
+		return (string) json_encode([
+			'ok' => false,
+			'error' => $this->translate($key, '')
+		], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	}
 
 	/**

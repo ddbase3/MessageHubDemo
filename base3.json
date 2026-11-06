@@ -16,6 +16,7 @@
 	"dependencies": {
 		"Base3Framework": ">=4.10.0",
 		"MessagingFoundation": ">=4.2.0",
-		"MessageHub": ">=4.3.0"
+		"MessageHub": ">=4.3.0",
+		"UiFoundation": ">=4.3.0"
 	}
 }
